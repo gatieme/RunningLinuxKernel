@@ -21,7 +21,7 @@ qemu_run_kernel( )
 		echo "you should build your kernel first"
 		echo "run the next :"
 		echo "\t$common build $ARCH $BUILD_ROOT_DIR"
-		exit -1
+		exit 1
 	fi
 
 	echo "====================="
@@ -60,26 +60,33 @@ qemu_debug_kernel( )
 	echo "====================="
 
 	TMUX_BIN=$(which tmux)
-	TMUX_SESSION=kerneldebug
-
 	if [ -z $TMUX_BIN ]; then
 		echo "You need to install tmux."
+		exit 1
 	fi
 
+	TMUX_SESSION=kdebug
 	$TMUX_BIN has -t $TMUX_SESSION
+	if [ $? = 0 ]; then
+		echo "$TMUX_SESSION have been started."
+		exit 1
+	fi
 
-	if [ $ARCH = "arm64" ];then
-		$TMUX_BIN new -d -n vim -s $TMUX_SESSION \"$QEMU_SYSTEM_BIN -machine virt -cpu cortex-a57 -machine type=virt -smp 4 -m 2048M -kernel ${IMAGE_FILE} -append \"rdinit=/linuxrc console=ttyAMA0 loglovel=8\" -nographic
-		$TMUX_BIN splitw -h -p 50 -t $TMUX_SESSION \"aarch64-linux-gnu-gdb\" $VMLINUX_FILE
+	if [ $ARCH = "x86_64" ];then
+		$TMUX_BIN new -d -n vim -s $TMUX_SESSION "echo $QEMU_SYSTEM_BIN -smp 4 -m 2048M -kernel $IMAGE_FILE -append \"rdinit=/linuxrc console=ttyS0\" -nographic -S -s"
+		$TMUX_BIN splitw -h -p 50 -t $TMUX_SESSION "gdb $VMLINUX_FILE"
+	elif [ $ARCH = "arm64" ];then
+		$TMUX_BIN new -d -n arm64_debug -s $TMUX_SESSION "$QEMU_SYSTEM_BIN -machine virt -cpu cortex-a57 -machine type=virt -smp 4 -m 2048M -kernel $IMAGE_FILE -append \"rdinit=/linuxrc console=ttyAMA0 loglovel=8\" -nographic -S -s"
+		$TMUX_BIN splitw -h -p 50 -t $TMUX_SESSION "aarch64-linux-gnu-gdb $VMLINUX_FILE"
 	fi
 
 	#$TMUX_BIN -v -p 20 -t $session "zsh" #水瓶分割
 	#$TMUX_BIN -h -p 50 -t %$TMUX_SESSION "aarch64-linux-gnu-gdb"  # 垂直划分
 
-	$TMUX_BIN slectw -t $TMUX_SESSION:1
+	$TMUX_BIN selectw -t $TMUX_SESSION:1
 	$TMUX_BIN att -t $TMUX_SESSION
 
-	#exit 0
+	exit 0
 }
 
 
@@ -92,7 +99,7 @@ running_linux_kernel( )
 	if [ $TO_DO = "run" ]; then
 		qemu_run_kernel
 	elif [ $TO_DO = "debug" ]; then
-		debug_run_kernel
+		qemu_debug_kernel
 	fi
 }
 
@@ -135,7 +142,7 @@ if [ $ARCH = "x86_64" ];then
 	QEMU_SYSTEM_BIN=$QEMU_SYSTEM_DIR/qemu-system-x86_64
 	#CROSS_COMPILE=aarch64-linux-gnu-
 elif [ $ARCH = "arm64" ];then
-	IMAGE_FILE=$BUILD_OUTPUT_DIR/arch/$ARCH/boot/zImage
+	IMAGE_FILE=$BUILD_OUTPUT_DIR/arch/$ARCH/boot/Image
 	QEMU_SYSTEM_BIN=$QEMU_SYSTEM_DIR/qemu-system-aarch64
 	CROSS_COMPILE=aarch64-linux-gnu-
 	#DTB_FILE=$BUILD_OUTPUT_DIR/arch/$ARCH/boot/dts/vexpress-v2p-ca9.dtb
@@ -146,7 +153,7 @@ elif [ $ARCH = "arm" ];then
 	DTB_FILE=$BUILD_OUTPUT_DIR/arch/$ARCH/boot/dts/vexpress-v2p-ca9.dtb
 else
 	echo "Uknown $ARCH"
-	exit -1
+	exit 1
 fi
 
 
