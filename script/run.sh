@@ -30,23 +30,34 @@ qemu_run_kernel( )
 	echo "====================="
 
 	if [ $ARCH = "x86_64" ]; then
-		$QEMU_SYSTEM_BIN									\
-			-smp 4 -m 2048M							\
-			-kernel $IMAGE_FILE						\
-			-append "rdinit=/linuxrc console=ttyS0" -nographic
+		$QEMU_SYSTEM_BIN							        \
+			-smp 4 -m 2048M							        \
+			-kernel $IMAGE_FILE						        \
+			-append "rdinit=/linuxrc console=ttyS0" -nographic                      \
+			--virtfs local,id=kmod_dev,path=$VIRFS,security_model=none,mount_tag=kmod_mount
+	elif [ $ARCH = "x86" ]; then
+                $QEMU_SYSTEM_BIN						                \
+			-smp 4 -m 2048M							        \
+			-kernel $IMAGE_FILE						        \
+			-append "rdinit=/linuxrc console=ttyS0" -nographic                      \
+			--virtfs local,id=kmod_dev,path=$VIRFS,security_model=none,mount_tag=kmod_mount
 	elif [ $ARCH = "arm64" ]; then
-		$QEMU_SYSTEM_BIN									\
-			-machine virt -cpu cortex-a57 -machine type=virt 				\
-			-smp 4 -m 2048M									\
-			-kernel $IMAGE_FILE						\
-			-append "rdinit=/linuxrc console=ttyAMA0 loglovel=8" 		\
-			-nographic
+		$QEMU_SYSTEM_BIN							        \
+			-machine virt -cpu cortex-a57 -machine type=virt 		        \
+			-smp 4 -m 2048M							        \
+			-kernel $IMAGE_FILE						        \
+			-append "rdinit=/linuxrc console=ttyAMA0 loglovel=8" 		        \
+			-nographic                                                              \
+			--fsdev local,id=kmod_dev,path=$VIRFS,security_model=none        \
+			-device virtio-9p-device,fsdev=kmod_dev,mount_tag=kmod_mount
 	elif [ $ARCH = "arm" ]; then
-		$QEMU_SYSTEM_BIN									\
-			-M vexpress-a9 -smp 2 -m 1024M							\
-			-kernel $IMAGE_FILE						\
-			-append "rdinit=/linuxrc console=ttyAMA0" -nographic		\
-			-dtb ${DTB_FILE}
+		$QEMU_SYSTEM_BIN							        \
+			-M vexpress-a9 -smp 2 -m 1024M					        \
+			-kernel $IMAGE_FILE						        \
+			-append "rdinit=/linuxrc console=ttyAMA0" -nographic		        \
+			-dtb ${DTB_FILE}                                                        \
+			--fsdev local,id=kmod_dev,path=$VIRFS,security_model=none        \
+			-device virtio-9p-device,fsdev=kmod_dev,mount_tag=kmod_mount
 	fi
 }
 
@@ -122,7 +133,10 @@ BUILD_OUTPUT_DIR=$BUILD_ROOT_DIR/build/$ARCH
 BUILD_KERNEL_DIR=$BUILD_ROOT_DIR/build/$KERNEL_NAME
 BUILD_PATCH_DIR=#BUILD_ROOT_DIR/patch
 
-QEMU_SYSTEM_DIR=/opt/software/qemu/2.11.0/bin
+QEMU_SYSTEM_DIR=/opt/software/toolchain/qemu/bin
+
+VIRFS=$ROOT_DIR/filesystem/9p_virfs
+
 
 if [ ! -d "$BUILD_ROOT_DIR" ];then
 	echo "ERROR $BUILD_ROOT_DIR Not found"
