@@ -16,8 +16,8 @@ bakcup_kernel_image( )
 qemu_run_kernel( )
 {
 	common=$0
-	if [ ! -f "$IMAGE_FILE" ];then
-		echo "image $IMAGE_FILE not found"
+	if [ ! -f "$KERNEL_IMAGE" ];then
+		echo "image $KERNEL_IMAGE not found"
 		echo "you should build your kernel first"
 		echo "run the next :"
 		echo "\t$common build $ARCH $BUILD_ROOT_DIR"
@@ -26,39 +26,38 @@ qemu_run_kernel( )
 
 	echo "====================="
 	echo "qemu $QEMU_SYSTEM_BIN"
-	echo "image $IMAGE_FILE"
+	echo "image $KERNEL_IMAGE"
+	echo "initrdfs $INITRDFS"
 	echo "====================="
 
-	if [ $ARCH = "x86_64" ]; then
-		$QEMU_SYSTEM_BIN							        \
-			-smp 4 -m 2048M							        \
-			-kernel $IMAGE_FILE						        \
-			-append "rdinit=/linuxrc console=ttyS0" -nographic                      \
-			--virtfs local,id=kmod_dev,path=$VIRFS,security_model=none,mount_tag=kmod_mount
-	elif [ $ARCH = "x86" ]; then
-                $QEMU_SYSTEM_BIN						                \
-			-smp 4 -m 2048M							        \
-			-kernel $IMAGE_FILE						        \
-			-append "rdinit=/linuxrc console=ttyS0" -nographic                      \
-			--virtfs local,id=kmod_dev,path=$VIRFS,security_model=none,mount_tag=kmod_mount
-	elif [ $ARCH = "arm64" ]; then
-		$QEMU_SYSTEM_BIN							        \
-			-machine virt -cpu cortex-a57 -machine type=virt 		        \
-			-smp 4 -m 2048M							        \
-			-kernel $IMAGE_FILE						        \
-			-append "rdinit=/linuxrc console=ttyAMA0 loglovel=8" 		        \
-			-nographic                                                              \
-			--fsdev local,id=kmod_dev,path=$VIRFS,security_model=none        \
-			-device virtio-9p-device,fsdev=kmod_dev,mount_tag=kmod_mount
-	elif [ $ARCH = "arm" ]; then
-		$QEMU_SYSTEM_BIN							        \
-			-M vexpress-a9 -smp 2 -m 1024M					        \
-			-kernel $IMAGE_FILE						        \
-			-append "rdinit=/linuxrc console=ttyAMA0" -nographic		        \
-			-dtb ${DTB_FILE}                                                        \
-			--fsdev local,id=kmod_dev,path=$VIRFS,security_model=none        \
-			-device virtio-9p-device,fsdev=kmod_dev,mount_tag=kmod_mount
-	fi
+	case $ARCH in
+		x86_64)
+		qemu-system-x86_64 -kernel $KERNEL_IMAGE \
+				   -append "root=/dev/ram rdinit=/linuxrc console=ttyS0" -nographic \
+				   -initrd $INITRDFS	\
+				   --virtfs local,id=kmod_dev,path=$VIRFS,security_model=none,mount_tag=kmod_mount \
+				   $DBG ;;
+		x86)
+		qemu-system-i386 -kernel $KERNEL_IMAGE \
+				 -append "/root=/dev/ram rdinit=/linuxrc console=ttyS0" -nographic \
+				 -initrd $INITRDFS \
+				 --virtfs local,id=kmod_dev,path=$VIRFS,security_model=none,mount_tag=kmod_mount \
+				 $DBG ;;
+		arm)
+		qemu-system-arm -M vexpress-a9 -smp 4 -m 1024M -kernel $KERNEL_IMAGE \
+				-dtb $DTB_FILE -nographic \
+				-append "root=/dev/ram rdinit=/linuxrc console=ttyAMA0 loglevel=8" \
+				-initrd $INITRDFS \
+				--fsdev local,id=kmod_dev,path=$VIRFS,security_model=none -device virtio-9p-device,fsdev=kmod_dev,mount_tag=kmod_mount \
+				$DBG ;;
+		arm64)
+		qemu-system-aarch64 -machine virt -cpu cortex-a57 -machine type=virt \
+				    -m 1024 -smp 2 -kernel $KERNEL_IMAGE \
+				    -append "root=/dev/ram rdinit=/linuxrc console=ttyAMA0" -nographic \
+				    -initrd $INITRDFS \
+				    --fsdev local,id=kmod_dev,path=$VIRFS,security_model=none -device virtio-9p-device,fsdev=kmod_dev,mount_tag=kmod_mount \
+				    $DBG ;;
+				    esac
 }
 
 
@@ -67,7 +66,7 @@ qemu_debug_kernel( )
 {
 	echo "====================="
 	echo "qemu $QEMU_SYSTEM_BIN"
-	echo "image $IMAGE_FILE"
+	echo "image $KERNEL_IMAGE"
 	echo "====================="
 
 	TMUX_BIN=$(which tmux)
@@ -84,10 +83,10 @@ qemu_debug_kernel( )
 	fi
 
 	if [ $ARCH = "x86_64" ];then
-		$TMUX_BIN new -d -n vim -s $TMUX_SESSION "echo $QEMU_SYSTEM_BIN -smp 4 -m 2048M -kernel $IMAGE_FILE -append \"rdinit=/linuxrc console=ttyS0\" -nographic -S -s"
+		$TMUX_BIN new -d -n vim -s $TMUX_SESSION "echo $QEMU_SYSTEM_BIN -smp 4 -m 2048M -kernel $KERNEL_IMAGE -append \"rdinit=/linuxrc console=ttyS0\" -nographic -S -s"
 		$TMUX_BIN splitw -h -p 50 -t $TMUX_SESSION "gdb $VMLINUX_FILE"
 	elif [ $ARCH = "arm64" ];then
-		$TMUX_BIN new -d -n arm64_debug -s $TMUX_SESSION "$QEMU_SYSTEM_BIN -machine virt -cpu cortex-a57 -machine type=virt -smp 4 -m 2048M -kernel $IMAGE_FILE -append \"rdinit=/linuxrc console=ttyAMA0 loglovel=8\" -nographic -S -s"
+		$TMUX_BIN new -d -n arm64_debug -s $TMUX_SESSION "$QEMU_SYSTEM_BIN -machine virt -cpu cortex-a57 -machine type=virt -smp 4 -m 2048M -kernel $KERNEL_IMAGE -append \"rdinit=/linuxrc console=ttyAMA0 loglovel=8\" -nographic -S -s"
 		$TMUX_BIN splitw -h -p 50 -t $TMUX_SESSION "aarch64-linux-gnu-gdb $VMLINUX_FILE"
 	fi
 
@@ -120,7 +119,7 @@ if [ $# != 3 ]; then
 fi
 
 if [ -z "$KERNEL_NAME" ];then
-	KERNEL_NAME=linux
+	KERNEL_NAME=src
 fi
 
 ROOT_DIR=..
@@ -130,11 +129,12 @@ BUILD_ROOT_DIR=$3
 
 
 BUILD_OUTPUT_DIR=$BUILD_ROOT_DIR/build/$ARCH
-BUILD_KERNEL_DIR=$BUILD_ROOT_DIR/build/$KERNEL_NAME
+BUILD_KERNEL_DIR=$BUILD_ROOT_DIR/$KERNEL_NAME
 BUILD_PATCH_DIR=#BUILD_ROOT_DIR/patch
 
 QEMU_SYSTEM_DIR=/opt/software/toolchain/qemu/bin
 
+INITRDFS=$ROOT_DIR/filesystem/initrdfs/$ARCH/rootfs.cpio.gz
 VIRFS=$ROOT_DIR/filesystem/9p_virfs
 
 
@@ -151,24 +151,30 @@ if [ ! -d "$BUILD_OUTPUT_DIR" ];then
 	echo "We will create/mkdir it"
 fi
 
-if [ $ARCH = "x86_64" ];then
-	IMAGE_FILE=$BUILD_OUTPUT_DIR/arch/$ARCH/boot/bzImage
-	QEMU_SYSTEM_BIN=$QEMU_SYSTEM_DIR/qemu-system-x86_64
-	#CROSS_COMPILE=aarch64-linux-gnu-
-elif [ $ARCH = "arm64" ];then
-	IMAGE_FILE=$BUILD_OUTPUT_DIR/arch/$ARCH/boot/Image
-	QEMU_SYSTEM_BIN=$QEMU_SYSTEM_DIR/qemu-system-aarch64
-	CROSS_COMPILE=aarch64-linux-gnu-
-	#DTB_FILE=$BUILD_OUTPUT_DIR/arch/$ARCH/boot/dts/vexpress-v2p-ca9.dtb
-elif [ $ARCH = "arm" ];then
-	IMAGE_FILE=$BUILD_OUTPUT_DIR/arch/$ARCH/boot/bzImage
-	QEMU_SYSTEM_BIN=$QEMU_SYSTEM_DIR/qemu-system-arm
-	CROSS_COMPILE=arm-linux-gnueabi-
-	DTB_FILE=$BUILD_OUTPUT_DIR/arch/$ARCH/boot/dts/vexpress-v2p-ca9.dtb
-else
+case $ARCH in
+	x86_64)
+		KERNEL_IMAGE=$BUILD_OUTPUT_DIR/arch/$ARCH/boot/bzImage
+		QEMU_SYSTEM_BIN=$QEMU_SYSTEM_DIR/qemu-system-x86_64
+	;;
+	arm64)
+		KERNEL_IMAGE=$BUILD_OUTPUT_DIR/arch/$ARCH/boot/Image
+		QEMU_SYSTEM_BIN=$QEMU_SYSTEM_DIR/qemu-system-aarch64
+		CROSS_COMPILE=aarch64-linux-gnu-
+	;;
+	arm)
+		KERNEL_IMAGE=$BUILD_OUTPUT_DIR/arch/$ARCH/boot/zImage
+		QEMU_SYSTEM_BIN=$QEMU_SYSTEM_DIR/qemu-system-arm
+		CROSS_COMPILE=arm-linux-gnueabi-
+		DTB_FILE=$BUILD_OUTPUT_DIR/arch/$ARCH/boot/dts/vexpress-v2p-ca9.dtb
+	;;
+	x86)
+		KERNEL_IMAGE=$BUILD_OUTPUT_DIR/arch/$ARCH/boot/bzImage
+		QEMU_SYSTEM_BIN=$QEMU_SYSTEM_DIR/qemu-system-i386
+	;;
+	*)
 	echo "Uknown $ARCH"
 	exit 1
-fi
+esac
 
 
 VMLINUX_FILE=$BUILD_OUTPUT_DIR/vmlinux

@@ -9,7 +9,9 @@
 #
 
 # build 
+./kernel
 ./kernel/*/build
+
 
 # Normal rules
 #
