@@ -6,16 +6,54 @@ show_usage( )
 }
 
 
+get_fullpath()
+{
+	#判断是否有参数,比如当前路径为/home/user1/workspace   参数为 ./../dir/hello.c
+	if [ -z $1 ]
+        then
+	        return 1
+	fi
+        relative_path=$1
+
+	#取前面一部分目录,比如  ./../../ ,  ../../ 等, 在这里调用cd命令来获取这部分路径的绝对路径,因为按这样写的,在当前路径的上级目录肯定是存在的.
+
+	#tmp_path1为 ./..
+
+	#tmp_fullpath1 /home/user1
+	tmp_path1=$(echo $relative_path | sed -e "s=/[^\.]*$==")
+	tmp_fullpath1=$(cd $tmp_path1 ;  pwd)
+
+	#获取后面一部分路径
+	#tmp_path2为dir/hello.c
+
+	tmp_path2=$(echo $relative_path | sed -e "s=\.[\./]*[/|$]==")
+	#echo $tmp_fullpath1
+	#echo $tmp_path1
+	#echo $tmp_path2
+	#拼凑路径返回
+	echo ${tmp_fullpath1}/${tmp_path2}
+	return 0
+}
+
 bakcup_kernel_image( )
 {
 	echo ""
 
 }
 
+qemu_build_kernel( )
+{
+	JOBS=`grep -c ^processor /proc/cpuinfo 2>/dev/null`
+
+	cd $BUILD_KERNEL_DIR
+	make mrproper
+	make defconfig O=$BUILD_OUTPUT_DIR
+	cd $BUILD_OUTPUT_DIR
+	make -j20 #$(JOBS)
+}
 
 qemu_run_kernel( )
 {
-	common=$0
 	if [ ! -f "$KERNEL_IMAGE" ];then
 		echo "image $KERNEL_IMAGE not found"
 		echo "you should build your kernel first"
@@ -106,7 +144,9 @@ running_linux_kernel( )
 	local ARCH=$2
 	local BUILD_ROOT_DIR=$3
 
-	if [ $TO_DO = "run" ]; then
+	if [ $TO_DO = "build" ]; then
+		qemu_build_kernel
+	elif [ $TO_DO = "run" ]; then
 		qemu_run_kernel
 	elif [ $TO_DO = "debug" ]; then
 		qemu_debug_kernel
@@ -122,20 +162,24 @@ if [ -z "$KERNEL_NAME" ];then
 	KERNEL_NAME=src
 fi
 
-ROOT_DIR=..
 TO_DO=$1
 ARCH=$2
-BUILD_ROOT_DIR=$3
-
-
+BUILD_ROOT_DIR=`get_fullpath $3`
 BUILD_OUTPUT_DIR=$BUILD_ROOT_DIR/build/$ARCH
 BUILD_KERNEL_DIR=$BUILD_ROOT_DIR/$KERNEL_NAME
 BUILD_PATCH_DIR=#BUILD_ROOT_DIR/patch
 
+VMLINUX_FILE=$BUILD_OUTPUT_DIR/vmlinux
+CONFIG_FILE=$BUILD_OUTPUT_DIR/.config
+
 QEMU_SYSTEM_DIR=/opt/software/toolchain/qemu/bin
 
+ROOT_DIR=..
 INITRDFS=$ROOT_DIR/filesystem/initrdfs/$ARCH/rootfs.cpio.gz
 VIRFS=$ROOT_DIR/filesystem/9p_virfs
+
+
+BAKCUP_DIR=$ROOT_DIR/backup/$ARCH
 
 
 if [ ! -d "$BUILD_ROOT_DIR" ];then
@@ -176,10 +220,5 @@ case $ARCH in
 	exit 1
 esac
 
-
-VMLINUX_FILE=$BUILD_OUTPUT_DIR/vmlinux
-CONFIG_FILE=$BUILD_OUTPUT_DIR/.config
-
-BAKCUP_DIR=$ROOT_DIR/backup/$ARCH
 
 running_linux_kernel $TO_DO $ARCH $BUILD_ROOT_DIR
