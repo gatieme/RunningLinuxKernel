@@ -95,7 +95,11 @@ qemu_run_kernel( )
 				    -initrd $INITRDFS \
 				    --fsdev local,id=kmod_dev,path=$VIRFS,security_model=none -device virtio-9p-device,fsdev=kmod_dev,mount_tag=kmod_mount \
 				    $DBG ;;
-				    esac
+		*)
+			echo "Unknown ARCH"
+			exit 0
+			;;
+	esac
 }
 
 
@@ -176,7 +180,7 @@ QEMU_SYSTEM_DIR=/opt/software/toolchain/qemu/bin
 
 ROOT_DIR=..
 INITRDFS=$ROOT_DIR/filesystem/initrdfs/$ARCH/rootfs.cpio.gz
-VIRFS=$ROOT_DIR/filesystem/9p_virfs
+VIRFS=$ROOT_DIR/filesystem/9p_virfs/$ARCH
 
 
 BAKCUP_DIR=$ROOT_DIR/backup/$ARCH
