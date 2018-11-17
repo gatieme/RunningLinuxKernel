@@ -58,7 +58,7 @@ qemu_run_kernel( )
 		echo "image $KERNEL_IMAGE not found"
 		echo "you should build your kernel first"
 		echo "run the next :"
-		echo "\t$common build $ARCH $BUILD_ROOT_SCRIPT_DIR"
+		echo "\t$common build $ARCH $BUILD_ROOT_DIR"
 		exit 1
 	fi
 
@@ -146,7 +146,7 @@ running_linux_kernel( )
 {
 	local TO_DO=$1
 	local ARCH=$2
-	local BUILD_ROOT_SCRIPT_DIR=$3
+	local BUILD_ROOT_DIR=$3
 
 	if [ $TO_DO = "build" ]; then
 		qemu_build_kernel
@@ -168,10 +168,10 @@ fi
 
 TO_DO=$1
 ARCH=$2
-BUILD_ROOT_SCRIPT_DIR=$(cd $(dirname $3); pwd)
-BUILD_OUTPUT_DIR=$BUILD_ROOT_SCRIPT_DIR/build/$ARCH
-BUILD_KERNEL_DIR=$BUILD_ROOT_SCRIPT_DIR/$KERNEL_NAME
-BUILD_PATCH_DIR=#BUILD_ROOT_SCRIPT_DIR/patch
+BUILD_ROOT_DIR=$(cd $(dirname $3); pwd)
+BUILD_OUTPUT_DIR=$BUILD_ROOT_DIR/build/$ARCH
+BUILD_KERNEL_DIR=$BUILD_ROOT_DIR/$KERNEL_NAME
+BUILD_PATCH_DIR=#BUILD_ROOT_DIR/patch
 
 VMLINUX_FILE=$BUILD_OUTPUT_DIR/vmlinux
 CONFIG_FILE=$BUILD_OUTPUT_DIR/.config
@@ -187,8 +187,8 @@ VIRFS=$ROOT_SCRIPT_DIR/filesystem/9p_virfs/$ARCH
 BAKCUP_DIR=$ROOT_SCRIPT_DIR/backup/$ARCH
 
 
-if [ ! -d "$BUILD_ROOT_SCRIPT_DIR" ];then
-	echo "ERROR $BUILD_ROOT_SCRIPT_DIR Not found"
+if [ ! -d "$BUILD_ROOT_DIR" ];then
+	echo "ERROR $BUILD_ROOT_DIR Not found"
 	echo "It's the place where your kernel_src, build, patch stay"
 	echo "you should mkdir $KERNEL_NAME, build in it"
 	echo
@@ -226,4 +226,4 @@ case $ARCH in
 esac
 
 
-running_linux_kernel $TO_DO $ARCH $BUILD_ROOT_SCRIPT_DIR
+running_linux_kernel $TO_DO $ARCH $BUILD_ROOT_DIR
