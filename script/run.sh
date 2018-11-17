@@ -157,6 +157,10 @@ running_linux_kernel( )
 	fi
 }
 
+#=====================
+# MAIN Functions here
+#=====================
+
 if [ $# != 3 ]; then
 	show_usage
 	exit 0
@@ -166,24 +170,45 @@ if [ -z "$KERNEL_NAME" ];then
 	KERNEL_NAME=src
 fi
 
-TO_DO=$1
-ARCH=$2
-BUILD_ROOT_DIR=$(cd $(dirname $3); pwd)
+for OPT #in $@
+do
+	OPTARG=$(expr "x$OPT" : 'x[^=]*=\(.*\)')
+
+	case $OPT in
+		--arch=*|-a=*)
+			ARCH=$OPTARG
+			;;
+		--source=*|-s=*)
+			KERNEL_SOURCE=$OPTARG
+			;;
+		--todo=*)
+			TO_DO=$OPTARG
+			;;
+		?)
+			show_usage
+			exit 0
+			;;
+	esac
+done
+
+
+# Build/Run Kernel Directory
+#KERNEL_SOURCE use --source
+BUILD_ROOT_DIR=$(cd $(dirname $KERNEL_SOURCE) ; pwd)
 BUILD_OUTPUT_DIR=$BUILD_ROOT_DIR/build/$ARCH
 BUILD_KERNEL_DIR=$BUILD_ROOT_DIR/$KERNEL_NAME
-BUILD_PATCH_DIR=#BUILD_ROOT_DIR/patch
-
+BUILD_PATCH_DIR=$BUILD_ROOT_DIR/patch
 VMLINUX_FILE=$BUILD_OUTPUT_DIR/vmlinux
 CONFIG_FILE=$BUILD_OUTPUT_DIR/.config
 
+# Qemu environment
 QEMU_SYSTEM_DIR=/opt/software/toolchain/qemu/bin
 
+# This Project Directory for scripts/filesystem/virtiofs
 CURR_SCRIPT_PATH=$(cd $(dirname ${BASH_SOURCE[0]}); pwd)
 ROOT_SCRIPT_DIR=$CURR_SCRIPT_PATH/..
 INITRDFS=$ROOT_SCRIPT_DIR/filesystem/initrdfs/$ARCH/rootfs.cpio.gz
 VIRFS=$ROOT_SCRIPT_DIR/filesystem/9p_virfs/$ARCH
-
-
 BAKCUP_DIR=$ROOT_SCRIPT_DIR/backup/$ARCH
 
 
@@ -224,6 +249,5 @@ case $ARCH in
 	echo "Uknown $ARCH"
 	exit 1
 esac
-
 
 running_linux_kernel $TO_DO $ARCH $BUILD_ROOT_DIR
