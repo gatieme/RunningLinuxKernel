@@ -66,18 +66,19 @@ qemu_run_kernel( )
 	echo "qemu $QEMU_SYSTEM_BIN"
 	echo "image $KERNEL_IMAGE"
 	echo "initrdfs $INITRDFS"
+	echo "virtiofs $VIRFS"
 	echo "====================="
 
 	case $ARCH in
 		x86_64)
-		qemu-system-x86_64 -kernel $KERNEL_IMAGE \
-				   -append "root=/dev/ram rdinit=/linuxrc console=ttyS0" -nographic \
+		qemu-system-x86_64 -kernel $KERNEL_IMAGE -smp 4 -m 4096M\
+				   -append "root=/dev/ram rdinit=/linuxrc console=ttyS0 nokaslr loglevel=8 kgdboc=ttyS0,115200 kgdbwait" -nographic \
 				   -initrd $INITRDFS	\
 				   --virtfs local,id=kmod_dev,path=$VIRFS,security_model=none,mount_tag=kmod_mount \
 				   $DBG ;;
 		x86)
-		qemu-system-i386 -kernel $KERNEL_IMAGE \
-				 -append "/root=/dev/ram rdinit=/linuxrc console=ttyS0" -nographic \
+		qemu-system-i386 -kernel $KERNEL_IMAGE -smp 4 -m 2048M\
+				 -append "/root=/dev/ram rdinit=/linuxrc console=ttyS0 loglevel=8" -nographic \
 				 -initrd $INITRDFS \
 				 --virtfs local,id=kmod_dev,path=$VIRFS,security_model=none,mount_tag=kmod_mount \
 				 $DBG ;;
@@ -90,7 +91,7 @@ qemu_run_kernel( )
 				$DBG ;;
 		arm64)
 		qemu-system-aarch64 -machine virt -cpu cortex-a57 -machine type=virt \
-				    -m 1024 -smp 2 -kernel $KERNEL_IMAGE \
+				    -m 4096M -smp 4 -kernel $KERNEL_IMAGE \
 				    -append "root=/dev/ram rdinit=/linuxrc console=ttyAMA0" -nographic \
 				    -initrd $INITRDFS \
 				    --fsdev local,id=kmod_dev,path=$VIRFS,security_model=none -device virtio-9p-device,fsdev=kmod_dev,mount_tag=kmod_mount \
@@ -161,7 +162,7 @@ running_linux_kernel( )
 # MAIN Functions here
 #=====================
 
-if [ $# != 3 ]; then
+if [ $# -gt 4 ]; then
 	show_usage
 	exit 0
 fi
@@ -184,6 +185,9 @@ do
 		--todo=*)
 			TO_DO=$OPTARG
 			;;
+		--debug=*)
+			DBG="-s"
+			;;
 		?)
 			show_usage
 			exit 0
@@ -195,7 +199,7 @@ done
 # Build/Run Kernel Directory
 #KERNEL_SOURCE use --source
 BUILD_ROOT_DIR=$(cd $(dirname $KERNEL_SOURCE) ; pwd)
-BUILD_OUTPUT_DIR=$BUILD_ROOT_DIR/build/$ARCH
+BUILD_OUTPUT_DIR=$BUILD_ROOT_DIR/build/$ARCH/qemu
 BUILD_KERNEL_DIR=$BUILD_ROOT_DIR/$KERNEL_NAME
 BUILD_PATCH_DIR=$BUILD_ROOT_DIR/patch
 VMLINUX_FILE=$BUILD_OUTPUT_DIR/vmlinux
