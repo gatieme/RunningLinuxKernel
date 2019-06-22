@@ -71,11 +71,16 @@ qemu_run_kernel( )
 
 	case $ARCH in
 		x86_64)
-		qemu-system-x86_64 -kernel $KERNEL_IMAGE -smp 4 -m 4096M\
-				   -append "root=/dev/ram rdinit=/linuxrc console=ttyS0 nokaslr loglevel=8 kgdboc=ttyS0,115200 kgdbwait" -nographic \
-				   -initrd $INITRDFS	\
-				   --virtfs local,id=kmod_dev,path=$VIRFS,security_model=none,mount_tag=kmod_mount \
-				   $DBG ;;
+		qemu-system-x86_64 -kernel $KERNEL_IMAGE \
+				-m 10240M -smp cpus=64,sockets=4,cores=16\
+				-numa node,mem=2560,cpus=0-15\
+				-numa node,mem=2560,cpus=16-31\
+				-numa node,mem=2560,cpus=32-47\
+				-numa node,mem=2560,cpus=48-63\
+				-append "root=/dev/ram rdinit=/linuxrc console=ttyS0 nokaslr loglevel=8 kgdboc=ttyS0,115200 kgdbwait" -nographic \
+				-initrd $INITRDFS	\
+				--virtfs local,id=kmod_dev,path=$VIRFS,security_model=none,mount_tag=kmod_mount \
+				$DBG ;;
 		x86)
 		qemu-system-i386 -kernel $KERNEL_IMAGE -smp 4 -m 2048M\
 				 -append "/root=/dev/ram rdinit=/linuxrc console=ttyS0 loglevel=8" -nographic \
