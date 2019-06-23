@@ -72,6 +72,7 @@ qemu_run_kernel( )
 	case $ARCH in
 		x86_64)
 		qemu-system-x86_64 -kernel $KERNEL_IMAGE \
+				-machine pc,usb=on\
 				-m 10240M -smp cpus=64,sockets=4,cores=16\
 				-numa node,mem=2560,cpus=0-15\
 				-numa node,mem=2560,cpus=16-31\
