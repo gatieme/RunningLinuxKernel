@@ -71,14 +71,15 @@ qemu_run_kernel( )
 
 	case $ARCH in
 		x86_64)
-		qemu-system-x86_64 -kernel $KERNEL_IMAGE \
-				-machine pc,usb=on\
-				-m 10240M -smp cpus=64,sockets=4,cores=16\
-				-numa node,mem=2560,cpus=0-15\
-				-numa node,mem=2560,cpus=16-31\
-				-numa node,mem=2560,cpus=32-47\
-				-numa node,mem=2560,cpus=48-63\
-				-append "root=/dev/ram rdinit=/linuxrc console=ttyS0 nokaslr loglevel=8 kgdboc=ttyS0,115200 kgdbwait" -nographic \
+			qemu-system-x86_64 -kernel $KERNEL_IMAGE \
+				-machine pc,usb=on	\
+				-m 5120M -smp cores=8                                               \
+				-numa node,cpus=0-1,nodeid=0 -numa node,cpus=2-3,nodeid=1,          \
+				-numa node,cpus=4-5,nodeid=2, -numa node,cpus=6-7,nodeid=3,         \
+				-numa dist,src=0,dst=1,val=12, -numa dist,src=0,dst=2,val=20,       \
+				-numa dist,src=0,dst=3,val=22, -numa dist,src=1,dst=2,val=22,       \
+				-numa dist,src=1,dst=3,val=24, -numa dist,src=2,dst=3,val=12		\
+			-append "root=/dev/ram rdinit=/linuxrc console=ttyS0 nokaslr loglevel=8 kgdboc=ttyS0,115200 sched_debug=1 psi=1 psi_v1=1" -nographic \
 				-initrd $INITRDFS	\
 				--virtfs local,id=kmod_dev,path=$VIRFS,security_model=none,mount_tag=kmod_mount \
 				$DBG ;;
@@ -96,8 +97,8 @@ qemu_run_kernel( )
 				--fsdev local,id=kmod_dev,path=$VIRFS,security_model=none -device virtio-9p-device,fsdev=kmod_dev,mount_tag=kmod_mount \
 				$DBG ;;
 		arm64)
-		qemu-system-aarch64 -machine virt -cpu cortex-a57 -machine type=virt \
-				    -m 4096M -smp 4 -kernel $KERNEL_IMAGE \
+		qemu-system-aarch64 -M virt,gic-version=3 -cpu cortex-a57 -machine type=virt \
+				    -m 20480M -smp 4 -kernel $KERNEL_IMAGE \
 				    -append "root=/dev/ram rdinit=/linuxrc console=ttyAMA0" -nographic \
 				    -initrd $INITRDFS \
 				    --fsdev local,id=kmod_dev,path=$VIRFS,security_model=none -device virtio-9p-device,fsdev=kmod_dev,mount_tag=kmod_mount \
