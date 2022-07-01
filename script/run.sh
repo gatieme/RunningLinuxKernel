@@ -71,15 +71,19 @@ qemu_run_kernel( )
 
 	case $ARCH in
 		x86_64)
-			qemu-system-x86_64 -kernel $KERNEL_IMAGE \
-				-machine pc,usb=on	\
-				-m 5120M -smp cores=8                                               \
-				-numa node,cpus=0-1,nodeid=0 -numa node,cpus=2-3,nodeid=1,          \
-				-numa node,cpus=4-5,nodeid=2, -numa node,cpus=6-7,nodeid=3,         \
-				-numa dist,src=0,dst=1,val=12, -numa dist,src=0,dst=2,val=20,       \
-				-numa dist,src=0,dst=3,val=22, -numa dist,src=1,dst=2,val=22,       \
-				-numa dist,src=1,dst=3,val=24, -numa dist,src=2,dst=3,val=12		\
-			-append "root=/dev/ram rdinit=/linuxrc console=ttyS0 nokaslr loglevel=8 kgdboc=ttyS0,115200 sched_debug=1 psi=1 psi_v1=1" -nographic \
+			qemu-system-x86_64 -machine pc,usb=on -enable-kvm												\
+				-m 4G -smp cores=2,threads=2,sockets=4												\
+				-object memory-backend-ram,id=mem0,size=1G												\
+				-object memory-backend-ram,id=mem1,size=1G												\
+				-object memory-backend-ram,id=mem2,size=1G												\
+				-object memory-backend-ram,id=mem3,size=1G												\
+				-numa node,memdev=mem0,cpus=0-3,nodeid=0 -numa node,memdev=mem1,cpus=4-7,nodeid=1							\
+				-numa node,memdev=mem2,cpus=8-11,nodeid=2 -numa node,memdev=mem3,cpus=12-15,nodeid=3							\
+				-numa dist,src=0,dst=1,val=12 -numa dist,src=0,dst=2,val=20										\
+				-numa dist,src=0,dst=3,val=22 -numa dist,src=1,dst=2,val=22										\
+				-numa dist,src=1,dst=3,val=24 -numa dist,src=2,dst=3,val=12										\
+				-kernel $KERNEL_IMAGE															\
+				-append "root=/dev/ram rdinit=/linuxrc console=ttyS0 nokaslr loglevel=8 kgdboc=ttyS0,115200 sched_debug=1 psi=1 psi_v1=1" -nographic	\
 				-initrd $INITRDFS	\
 				--virtfs local,id=kmod_dev,path=$VIRFS,security_model=none,mount_tag=kmod_mount \
 				$DBG ;;
@@ -189,6 +193,9 @@ do
 		--source=*|-s=*)
 			KERNEL_SOURCE=$OPTARG
 			;;
+		--build=*|-b=*)
+			KERNEL_BUILD=$OPTARG
+			;;
 		--todo=*)
 			TO_DO=$OPTARG
 			;;
@@ -206,6 +213,7 @@ done
 # Build/Run Kernel Directory
 #KERNEL_SOURCE use --source
 BUILD_ROOT_DIR=$(cd $(dirname $KERNEL_SOURCE) ; pwd)
+#BUILD_OUTPUT_DIR=$KERNEL_BUILD
 BUILD_OUTPUT_DIR=$BUILD_ROOT_DIR/build/$ARCH/qemu
 BUILD_KERNEL_DIR=$BUILD_ROOT_DIR/$KERNEL_NAME
 BUILD_PATCH_DIR=$BUILD_ROOT_DIR/patch
